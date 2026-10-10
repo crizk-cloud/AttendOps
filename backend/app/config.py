@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     environment: str = Field(default="development", description="development | production")
+    log_level: str = "INFO"
     database_url: str = "postgresql+psycopg://attendops:attendops@localhost:5432/attendops"
 
     # Auth
@@ -25,6 +26,11 @@ class Settings(BaseSettings):
 
     # Fernet key used to encrypt device passwords at rest.
     device_credentials_key: SecretStr
+
+    # Device communication
+    device_connect_timeout: float = 3.0
+    device_read_timeout: float = 10.0
+    device_max_concurrency: int = 4
 
     app_timezone: str = "Asia/Beirut"
     cors_origins: list[str] = ["http://localhost:5173"]

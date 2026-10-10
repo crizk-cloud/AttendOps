@@ -5,6 +5,8 @@ import { Layout } from './components/Layout'
 import { AccountPage } from './pages/AccountPage'
 import { AppUsersPage } from './pages/AppUsersPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { DeviceDetailPage } from './pages/DeviceDetailPage'
+import { DevicesPage } from './pages/DevicesPage'
 import { LoginPage } from './pages/LoginPage'
 
 export default function App() {
@@ -22,6 +24,15 @@ export default function App() {
           >
             <Route index element={<DashboardPage />} />
             <Route path="account" element={<AccountPage />} />
+            <Route path="devices/:id" element={<DeviceDetailPage />} />
+            <Route
+              path="devices"
+              element={
+                <RequireAuth minRole="admin">
+                  <DevicesPage />
+                </RequireAuth>
+              }
+            />
             <Route
               path="app-users"
               element={

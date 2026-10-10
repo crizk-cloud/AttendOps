@@ -1,16 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, refreshAccessToken, setAccessToken, setSessionLostHandler } from '../api/client'
 import { ROLE_RANK, type AppUser, type Role } from '../api/types'
-
-interface AuthState {
-  user: AppUser | null
-  loading: boolean
-  login: (email: string, password: string) => Promise<void>
-  logout: () => Promise<void>
-  hasRole: (min: Role) => boolean
-}
-
-const AuthContext = createContext<AuthState | null>(null)
+import { AuthContext } from './useAuth'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null)
@@ -47,10 +38,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ user, loading, login, logout, hasRole }), [user, loading, login, logout, hasRole])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
-  return ctx
 }

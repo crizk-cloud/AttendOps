@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import type { AppUser, Role } from '../api/types'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { formatDateTime } from '../lib/time'
 
 const ROLES: Role[] = ['viewer', 'operator', 'admin']

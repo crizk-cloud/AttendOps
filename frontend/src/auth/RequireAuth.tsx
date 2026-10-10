@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import type { Role } from '../api/types'
-import { useAuth } from './AuthContext'
+import { useAuth } from './useAuth'
 
 // UI-side guard only, for navigation. The backend enforces every role check independently.
 export function RequireAuth({ minRole = 'viewer', children }: { minRole?: Role; children: ReactNode }) {

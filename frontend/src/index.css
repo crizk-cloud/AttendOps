@@ -77,3 +77,59 @@ tr.inactive td { color: var(--muted); }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; }
 .page-loading { padding: 40px; text-align: center; color: var(--muted); }
+
+/* --- Phase 2: devices --- */
+:root {
+  --st-online: #067647; --st-online-bg: #ecfdf3;
+  --st-offline: #b42318; --st-offline-bg: #fef3f2;
+  --st-auth: #b54708; --st-auth-bg: #fffaeb;
+  --st-unknown: #475467; --st-unknown-bg: #f2f4f7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --st-online: #47cd89; --st-online-bg: #0f2a1d;
+    --st-offline: #f97066; --st-offline-bg: #2d1515;
+    --st-auth: #fdb022; --st-auth-bg: #2b2111;
+    --st-unknown: #98a2b3; --st-unknown-bg: #232a33;
+  }
+}
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.page-head h2 { margin: 0; display: flex; align-items: center; gap: 10px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+button.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+button.link.danger { color: var(--danger); }
+td.actions { display: flex; gap: 12px; align-items: center; }
+.badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.status-online { color: var(--st-online); background: var(--st-online-bg); }
+.status-offline, .status-error { color: var(--st-offline); background: var(--st-offline-bg); }
+.status-auth_failed { color: var(--st-auth); background: var(--st-auth-bg); }
+.status-unknown { color: var(--st-unknown); background: var(--st-unknown-bg); }
+.cap-verified { color: var(--st-online); background: var(--st-online-bg); }
+.cap-unsupported { color: var(--st-offline); background: var(--st-offline-bg); }
+.cap-unverified { color: var(--st-unknown); background: var(--st-unknown-bg); }
+.spinner { width: 10px; height: 10px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; text-align: left;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; }
+.tile.active { outline: 2px solid var(--accent); }
+.tile-num { font-size: 24px; font-weight: 700; }
+.tile-label { font-size: 12px; color: var(--muted); }
+.tile-online .tile-num { color: var(--st-online); }
+.tile-offline .tile-num, .tile-error .tile-num { color: var(--st-offline); }
+.tile-auth_failed .tile-num { color: var(--st-auth); }
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.tab { background: none; color: var(--muted); border-radius: 6px 6px 0 0; }
+.tab.active { color: var(--text); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+.grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 16px; }
+.grid-form .full { grid-column: 1 / -1; }
+label.inline { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
+textarea { width: 100%; font: 13px ui-monospace, Menlo, monospace; padding: 8px 10px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--surface); color: var(--text); margin-bottom: 12px; }
+table.preview { margin-bottom: 12px; font-size: 13px; }
+table.preview tr.bad td { color: var(--danger); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 16px; }
+.source { font-size: 11px; font-weight: 500; color: var(--muted); border: 1px dashed var(--border); border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+.source-device { border-style: solid; }
+code { font-size: 12px; background: var(--bg); padding: 1px 4px; border-radius: 4px; }

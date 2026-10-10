@@ -1,10 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import type { Role } from '../api/types'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { APP_TIME_ZONE } from '../lib/time'
 
 const NAV: { to: string; label: string; minRole: Role }[] = [
   { to: '/', label: 'Dashboard', minRole: 'viewer' },
+  { to: '/devices', label: 'Manage devices', minRole: 'admin' },
   { to: '/app-users', label: 'App accounts', minRole: 'admin' },
   { to: '/account', label: 'My account', minRole: 'viewer' },
 ]
