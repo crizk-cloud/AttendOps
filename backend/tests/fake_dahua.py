@@ -29,6 +29,33 @@ class FakeDahua:
         self.auth_headers: list[str | None] = []  # snapshot per request (httpx mutates Request objects)
         self.model, self.firmware, self.serial = model, firmware, serial
         self.supports_user_api = supports_user_api
+        # Access history held by the fake; recordFinder applies the same 1024 cap as the real devices.
+        self.records: list[dict[str, str]] = []
+        self.fail_after_queries: int | None = None  # simulate the device dropping off mid-sync
+        self.history_queries = 0
+
+    def add_records(self, times: list[int], **fields: str) -> list[dict[str, str]]:
+        start = len(self.records) + 1
+        new = [{"RecNo": str(start + i), "CreateTime": str(t), "UserID": str(1000 + (start + i) % 7),
+                "CardName": fields.get("CardName", f"Person {(start + i) % 7}"), "CardNo": f"C{(start + i) % 7:04d}",
+                "Type": fields.get("Type", "Entry"), "Method": "1", "Status": fields.get("Status", "1"),
+                "Door": "0", "ReaderID": "1", "ErrorCode": "0", "Password": fields.get("Password", "")}
+               for i, t in enumerate(times)]
+        self.records.extend(new)
+        return new
+
+    def _find_records(self, request: httpx.Request) -> httpx.Response:
+        self.history_queries += 1
+        if self.fail_after_queries is not None and self.history_queries > self.fail_after_queries:
+            raise httpx.ConnectError("Connection refused", request=request)
+        p = request.url.params
+        if not (p.get("StartTime", "").isdigit() and p.get("EndTime", "").isdigit()):
+            return httpx.Response(400, text="Error\r\nBad Request!\r\n")  # like the real device
+        s, e, count = int(p["StartTime"]), int(p["EndTime"]), min(int(p.get("count", 1024)), 1024)
+        hits = sorted((r for r in self.records if s <= int(r["CreateTime"]) <= e), key=lambda r: int(r["CreateTime"]))
+        hits = hits[:count]
+        lines = [f"found={len(hits)}"] + [f"records[{i}].{k}={v}" for i, r in enumerate(hits) for k, v in r.items()]
+        return httpx.Response(200, text="\r\n".join(lines) + "\r\n")
 
     def transport(self) -> httpx.MockTransport:
         return httpx.MockTransport(self.handle)
@@ -66,7 +93,7 @@ class FakeDahua:
             }.get(action, bad)
         if cgi == "recordFinder.cgi" and action == "find" and \
                 request.url.params.get("name") == "AccessControlCardRec":
-            return ok("found=0\r\n")
+            return self._find_records(request)
         if cgi in ("AccessUser.cgi", "AccessCard.cgi") and self.supports_user_api:
             if action == "startFind":
                 return ok("Token=12\r\nTotal=3\r\n")

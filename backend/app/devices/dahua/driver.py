@@ -24,6 +24,7 @@ from app.devices.base import (
 )
 from app.devices.dahua.client import DahuaClient
 from app.devices.dahua.parsing import parse_kv
+from app.devices.dahua.records import FetchStats, RecordFetchError, fetch_window
 
 UNSUPPORTED_CODES = {400, 404, 405, 501}
 
@@ -155,3 +156,21 @@ class DahuaDriver:
         except httpx.TransportError:
             pass
         return Capability(CapabilityState.verified, "startFind returned a search token")
+
+    # -- access history -------------------------------------------------------
+    def fetch_access_records(self, start: int, end: int, stats: FetchStats) -> list[dict[str, str]]:
+        """All AccessControlCardRec records with CreateTime in [start, end] (Unix seconds)."""
+        with self._client() as c:
+            def query(s: int, e: int, count: int) -> str:
+                r = c.get("/cgi-bin/recordFinder.cgi", {"action": "find", "name": "AccessControlCardRec",
+                                                       "StartTime": s, "EndTime": e, "count": count})
+                if r.status_code == 401:
+                    raise RecordFetchError("Username or password rejected")
+                if r.status_code != 200:
+                    raise RecordFetchError(f"HTTP {r.status_code} from recordFinder")
+                return r.text
+
+            try:
+                return fetch_window(query, start, end, stats=stats)
+            except httpx.TransportError as exc:
+                raise RecordFetchError(_clean_error(exc)) from exc

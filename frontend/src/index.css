@@ -133,3 +133,21 @@ table.preview tr.bad td { color: var(--danger); }
 .source { font-size: 11px; font-weight: 500; color: var(--muted); border: 1px dashed var(--border); border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
 .source-device { border-style: solid; }
 code { font-size: 12px; background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+
+/* --- Phase 3: logs & sync --- */
+.filters { display: flex; flex-wrap: wrap; gap: 0 12px; align-items: flex-end; }
+.filters label { margin-bottom: 8px; }
+.filters .grow { flex: 1 1 220px; }
+.filters .quick { display: flex; gap: 6px; margin-bottom: 8px; }
+.table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+table.logs td, .small-table td { font-size: 14px; }
+.nowrap { white-space: nowrap; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--bg); }
+.pager { display: flex; gap: 12px; align-items: center; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+.overlay { position: fixed; inset: 0; background: rgb(0 0 0 / 0.4); display: grid; place-items: center; padding: 16px; z-index: 10; }
+.dialog { width: min(640px, 100%); max-height: 85vh; overflow: auto; }
+.reimport { margin: 12px 0; }
+.reimport input { padding: 6px 8px; }
+.danger-text { color: var(--danger); }
+h4 { margin: 16px 0 8px; }

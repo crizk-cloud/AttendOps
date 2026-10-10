@@ -5,6 +5,7 @@ import type { ConnectionTestResult, Device } from '../api/types'
 import { useAuth } from '../auth/useAuth'
 import { SourceTag } from '../components/SourceTag'
 import { StatusBadge } from '../components/StatusBadge'
+import { SyncPanel } from '../components/SyncPanel'
 import { formatDateTime, formatRelative } from '../lib/time'
 
 const OPERATION_LABELS: Record<string, string> = {
@@ -106,6 +107,8 @@ export function DeviceDetailPage() {
           </dl>
         </div>
       </div>
+
+      <SyncPanel device={d} onChange={load} />
 
       <div className="card">
         <h3>

@@ -38,6 +38,11 @@ export interface Device {
   last_error: string | null
   last_response_ms: number | null
   checking: boolean
+  // history sync
+  synced_until: string | null
+  last_sync_at: string | null
+  last_sync_status: SyncStatus | null
+  syncing: boolean
   created_at: string
 }
 
@@ -48,4 +53,55 @@ export interface ConnectionTestResult {
   serial_no: string | null
   error: string | null
   response_ms: number | null
+}
+
+export type SyncStatus = 'running' | 'success' | 'partial' | 'failed'
+
+export interface AccessLog {
+  id: number
+  device_id: number
+  device_name: string
+  rec_no: number
+  event_time: string | null
+  device_user_id: string | null
+  card_name: string | null
+  card_no: string | null
+  type: string | null
+  method: number | null
+  status: number | null
+  door: number | null
+  reader_id: string | null
+  error_code: number | null
+  granted: boolean | null
+}
+
+export interface AccessLogDetail extends AccessLog {
+  raw_payload: Record<string, string>
+  imported_at: string
+}
+
+export interface LogPage {
+  items: AccessLog[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface SyncRun {
+  id: number
+  device_id: number
+  device_name: string | null
+  trigger: string
+  started_at: string
+  finished_at: string | null
+  status: SyncStatus
+  window_start: string
+  window_end: string
+  synced_until: string | null
+  records_found: number
+  records_inserted: number
+  records_existing: number
+  queries: number
+  warnings: unknown[] | null
+  error_message: string | null
 }

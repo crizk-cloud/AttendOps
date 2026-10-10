@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api import app_users, auth, devices
+from app.api import app_users, auth, devices, logs, sync
 from app.config import get_settings
 from app.db import get_engine
 
@@ -21,6 +21,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(app_users.router)
     app.include_router(devices.router)
+    app.include_router(sync.router)
+    app.include_router(logs.router)
 
     @app.get("/api/health", tags=["health"])
     def health() -> dict:

@@ -24,6 +24,7 @@ from app.schemas.devices import (
 )
 from app.security.crypto import CredentialDecryptError, decrypt_secret, encrypt_secret
 from app.services import devices as svc
+from app.services import sync as sync_svc
 
 router = APIRouter(prefix="/api/devices", tags=["devices"])
 
@@ -32,6 +33,7 @@ def _out(device: Device, user: AppUser, checking: set[int] | None = None) -> Dev
     out = DeviceOut.model_validate(device)
     out.username = device.username if user.role == Role.admin else None
     out.checking = device.id in (checking if checking is not None else svc.checking_ids())
+    out.syncing = device.id in sync_svc.syncing_ids()
     return out
 
 
@@ -163,7 +165,12 @@ def update_device(device_id: int, body: DeviceUpdate, user: AppUser = Depends(re
 @router.delete("/{device_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_device(device_id: int, _: AppUser = Depends(require_admin),
                   db: Session = Depends(get_db)) -> Response:
-    db.delete(_get(db, device_id))
+    device = _get(db, device_id)
+    count = sync_svc.log_count(db, device_id)
+    if count:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{device.name} has {count} imported log records and "
+                                                      "cannot be removed. Disable it instead.")
+    db.delete(device)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

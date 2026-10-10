@@ -118,4 +118,9 @@ class DeviceOut(BaseModel):
     last_error: str | None
     last_response_ms: int | None
     checking: bool = False
+    # history sync
+    synced_until: datetime | None = None
+    last_sync_at: datetime | None = None
+    last_sync_status: str | None = None
+    syncing: bool = False
     created_at: datetime

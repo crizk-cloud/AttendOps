@@ -18,8 +18,9 @@ The existing `dahua_attendance_logger.py` integration is separate and is not tou
 | 0 | Inspect repo, read-only device probe (`tools/probe_device.py`) | done |
 | 1 | Scaffold, docker-compose, config, login with roles | done |
 | 2 | Device registration (single + bulk), connectivity, model/capability detection, dashboard | done |
-| 3 | Historical log sync, logs table | next |
-| 4–7 | Scheduler, users/cards, analytics, live feed, audit, deployment | planned |
+| 3 | Historical log sync (idempotent, cap-safe), searchable logs table | done |
+| 4 | Scheduled sync of all devices, sync history/diagnostics page | next |
+| 5–7 | Users/cards, analytics, live feed, audit, deployment | planned |
 
 ## Run locally with Docker (recommended)
 
@@ -78,6 +79,9 @@ Read by the backend from the environment or `backend/.env`. Docker compose reads
 | `DEVICE_CONNECT_TIMEOUT` | no | `3` | Seconds to wait for a device to accept a connection |
 | `DEVICE_READ_TIMEOUT` | no | `10` | Seconds to wait for a device's answer |
 | `DEVICE_MAX_CONCURRENCY` | no | `4` | Max simultaneous device requests from the backend (the terminals and the existing logger share them) |
+| `SYNC_INITIAL_DAYS` | no | `30` | How far back a device's first sync goes (older ranges: use *Re-import*) |
+| `SYNC_OVERLAP_MINUTES` | no | `60` | Each sync re-reads this much before the last sync point, and this much past "now" |
+| `SYNC_CHUNK_HOURS` | no | `24` | Size of each committed import chunk |
 | `LOG_LEVEL` | no | `INFO` | Backend log level |
 | `CORS_ORIGINS` | no | `["http://localhost:5173"]` | Only needed if the browser calls the API cross-origin |
 
@@ -119,6 +123,53 @@ confirm them.
 **Networking.** The backend container reaches the devices through Docker's default NAT, so the host must be able
 to reach every device subnet (e.g. 172.22.76.0/24 and 172.23.5.0/24).
 
+## Access history sync
+
+Operators start a sync from the dashboard (**Sync all logs**) or a device page (**Sync now**, or **Re-import** a
+date range). Phase 4 adds the automatic schedule.
+
+How it stays correct:
+
+- **Nothing is dropped at the 1024 cap.** Each window is queried with Unix-integer `StartTime`/`EndTime`. If the
+  answer reaches 1024 records, the window is split in half and both halves are queried, recursively. The halves
+  overlap by one second, so no boundary record is missed whatever the device's inclusive/exclusive behaviour,
+  and duplicates are removed by `RecNo`. If more than 1024 records share one second, the run fails with an
+  explicit error instead of silently losing data.
+- **Idempotent.** Rows are upserted on `(device_id, rec_no)`. Re-running any sync or range never duplicates.
+- **Incremental and resumable.** Each device keeps `synced_until`. It only advances after a chunk (24 h) has been
+  fully imported and committed. The next sync starts at `synced_until − 60 min`. If a device drops off midway,
+  the run is marked `partial`, completed chunks are kept, and the next sync resumes from the last good point.
+- **One sync per device at a time.** A PostgreSQL advisory lock protects each device, also across processes.
+- **Isolated.** Devices sync in parallel (bounded by `DEVICE_MAX_CONCURRENCY`), each with its own DB session.
+  One failing device never blocks the others.
+- **Device resets are surfaced.** If a device returns a `RecNo` that is already stored with a different time
+  (e.g. after a factory reset), that record is not imported. The run is marked `partial` with a warning, never
+  silently skipped.
+- **PINs are never stored.** Any non-empty `Password` field in a device record is replaced with `[redacted]`.
+- A device that has imported logs cannot be deleted (disable it instead), so history is never lost by accident.
+
+Every attempt is recorded in `sync_runs`: window, records found / new / already present, number of device
+queries, warnings and errors.
+
+### Time handling
+
+`CreateTime` is stored as a true Unix epoch (UTC) in `access_logs.event_time` and displayed in Asia/Beirut.
+Date filters on the logs page are Beirut calendar days. `dahua_attendance_logger.py` interprets `CreateTime` the
+same way. This has **not yet been confirmed against a real device's clock**: `tools/probe_device.py` reports it.
+The raw `CreateTime` is kept in `raw_payload`, so a correction would be possible without re-reading devices.
+
+## Access logs
+
+The **Access logs** page (all roles) lists imported records, newest first, with:
+- date range (Beirut days; quick buttons for today / 7 / 30 days)
+- device
+- search: name contains, or exact card number or user ID
+- type (Entry/Exit) and result (granted = `Status=1`, denied = anything else)
+- page size and sort order
+
+Filters are kept in the URL, so a filtered view can be bookmarked or shared. Clicking a row shows the raw device
+record. Records are read-only: they are data reported by the devices.
+
 ## Security design (so far)
 
 - **Tokens.** The access token (15 min) is kept only in browser memory. The refresh token is an httpOnly,
@@ -157,7 +208,7 @@ backend/app/
   auth/             passwords, JWT, role dependencies, providers/
   security/crypto.py  Fernet encryption for device credentials
   devices/          device integration layer: base.py (interface), registry.py, dahua/ (client, parsing, driver)
-  services/         sync, pending changes, analytics (Phase 3+)
+  services/         devices.py (checks), sync.py (history import); later pending changes, analytics
 backend/alembic/    migrations
 frontend/src/       api client, auth context, pages
 tools/probe_device.py   read-only probe to run on the LAN against one device

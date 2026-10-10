@@ -17,7 +17,7 @@ export function useDevices() {
         if (cancelled) return
         setDevices(list)
         setError(null)
-        timer = window.setTimeout(tick, list.some((d) => d.checking) ? 2000 : 30000)
+        timer = window.setTimeout(tick, list.some((d) => d.checking || d.syncing) ? 2000 : 30000)
       } catch (e) {
         if (cancelled) return
         setError(e instanceof Error ? e.message : 'Failed to load devices')

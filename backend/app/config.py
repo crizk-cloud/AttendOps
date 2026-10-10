@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     device_read_timeout: float = 10.0
     device_max_concurrency: int = 4
 
+    # History sync
+    sync_initial_days: int = 30      # how far back the first sync of a device goes
+    sync_overlap_minutes: int = 60   # re-read this much before the last sync point (late/clock-skewed records)
+    sync_chunk_hours: int = 24       # import and commit in chunks of this size
+
     app_timezone: str = "Asia/Beirut"
     cors_origins: list[str] = ["http://localhost:5173"]
 

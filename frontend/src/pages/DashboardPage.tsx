@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import type { Device, DeviceStatus } from '../api/types'
 import { useAuth } from '../auth/useAuth'
 import { StatusBadge } from '../components/StatusBadge'
+import { SyncBadge } from '../components/SyncBadge'
 import { formatDateTime, formatRelative } from '../lib/time'
 import { useDevices } from '../lib/useDevices'
 
@@ -32,6 +33,16 @@ export function DashboardPage() {
     }
   }
 
+  async function syncAll() {
+    setBusy('all')
+    try {
+      await api('/api/sync/all', { method: 'POST' })
+    } finally {
+      setBusy(null)
+      void reload()
+    }
+  }
+
   async function checkOne(d: Device) {
     setBusy(d.id)
     try {
@@ -45,15 +56,21 @@ export function DashboardPage() {
   const enabled = devices?.filter((d) => d.enabled) ?? []
   const shown = (devices ?? []).filter((d) => !filter || d.status === filter)
   const anyChecking = devices?.some((d) => d.checking)
+  const anySyncing = devices?.some((d) => d.syncing)
 
   return (
     <section>
       <div className="page-head">
         <h2>Dashboard</h2>
         {canCheck && (
-          <button onClick={() => void checkAll()} disabled={busy !== null || anyChecking || !enabled.length}>
-            {anyChecking ? 'Checking…' : 'Check all devices'}
-          </button>
+          <div className="row">
+            <button className="secondary" onClick={() => void checkAll()} disabled={busy !== null || anyChecking || !enabled.length}>
+              {anyChecking ? 'Checking…' : 'Check all devices'}
+            </button>
+            <button onClick={() => void syncAll()} disabled={busy !== null || anySyncing || !enabled.length}>
+              {anySyncing ? 'Syncing…' : 'Sync all logs'}
+            </button>
+          </div>
         )}
       </div>
       {error && <div className="error">{error}</div>}
@@ -92,6 +109,7 @@ export function DashboardPage() {
                 <th>Status</th>
                 <th title="Last time the device answered an authenticated request">Last successful contact</th>
                 <th>Last check</th>
+                <th title="Last access-history import">Last sync</th>
                 <th title="Reported by the device">Model / firmware</th>
                 {canCheck && <th />}
               </tr>
@@ -113,6 +131,10 @@ export function DashboardPage() {
                   </td>
                   <td title={formatDateTime(d.last_seen_at)}>{formatRelative(d.last_seen_at)}</td>
                   <td title={formatDateTime(d.last_checked_at)}>{formatRelative(d.last_checked_at)}</td>
+                  <td title={formatDateTime(d.last_sync_at)}>
+                    <SyncBadge status={d.last_sync_status} syncing={d.syncing} />
+                    {d.last_sync_at && <div className="small muted">{formatRelative(d.last_sync_at)}</div>}
+                  </td>
                   <td className="small">
                     {d.model ?? <span className="muted">unknown</span>}
                     {d.firmware && <div className="muted">{d.firmware}</div>}
