@@ -4,3 +4,8 @@ __pycache__/
 probe_*/
 node_modules/
 dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.tsbuildinfo
+*.egg-info/
