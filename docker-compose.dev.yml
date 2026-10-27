@@ -1,0 +1,54 @@
+# DEVELOPMENT stack (hot-reloading frontend, DB port exposed). For installing/running the app, use
+# docker-compose.yml via install.ps1 / install.sh instead.
+#   docker compose -f docker-compose.dev.yml up -d --build
+name: attendops-dev
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-attendops}
+      POSTGRES_USER: ${POSTGRES_USER:-attendops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"   # host access for local tools only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-attendops}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-attendops}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      DEVICE_CREDENTIALS_KEY: ${DEVICE_CREDENTIALS_KEY:?set DEVICE_CREDENTIALS_KEY in .env}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Beirut}
+      ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-15}
+      REFRESH_TOKEN_DAYS: ${REFRESH_TOKEN_DAYS:-7}
+      DEVICE_CONNECT_TIMEOUT: ${DEVICE_CONNECT_TIMEOUT:-3}
+      DEVICE_READ_TIMEOUT: ${DEVICE_READ_TIMEOUT:-10}
+      DEVICE_MAX_CONCURRENCY: ${DEVICE_MAX_CONCURRENCY:-4}
+      SYNC_INITIAL_DAYS: ${SYNC_INITIAL_DAYS:-30}
+      SYNC_OVERLAP_MINUTES: ${SYNC_OVERLAP_MINUTES:-60}
+      SYNC_CHUNK_HOURS: ${SYNC_CHUNK_HOURS:-24}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  frontend:
+    build: ./frontend
+    environment:
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:

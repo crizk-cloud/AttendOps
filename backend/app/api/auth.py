@@ -33,7 +33,7 @@ COOKIE_PATH = "/api/auth"
 def _set_refresh_cookie(response: Response, pair: TokenPair) -> None:
     response.set_cookie(
         REFRESH_COOKIE, pair.refresh_token, max_age=pair.refresh_expires_in, path=COOKIE_PATH,
-        httponly=True, samesite="strict", secure=get_settings().is_production,
+        httponly=True, samesite="strict", secure=get_settings().cookie_secure,
     )
 
 

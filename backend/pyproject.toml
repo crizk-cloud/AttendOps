@@ -16,6 +16,7 @@ dependencies = [
     "pyjwt>=2.8",
     "cryptography>=42",
     "httpx>=0.27",
+    "tzdata>=2024.1",  # time zone data on systems without it (e.g. Windows)
 ]
 
 [project.optional-dependencies]

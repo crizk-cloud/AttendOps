@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     sync_overlap_minutes: int = 60   # re-read this much before the last sync point (late/clock-skewed records)
     sync_chunk_hours: int = 24       # import and commit in chunks of this size
 
+    # Send the refresh cookie over HTTPS only. Leave off for a plain-HTTP install on a local computer/LAN;
+    # turn on when the app is served over HTTPS.
+    cookie_secure: bool = False
+
+    # Folder with the built frontend (served by the backend in the single-container install). Unset in dev.
+    static_dir: str | None = None
+
     app_timezone: str = "Asia/Beirut"
     cors_origins: list[str] = ["http://localhost:5173"]
 

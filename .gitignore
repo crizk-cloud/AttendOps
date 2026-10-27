@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .env
+.env.old-*
 probe_*/
 node_modules/
 dist/

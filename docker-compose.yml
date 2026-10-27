@@ -1,27 +1,34 @@
-# Local development stack. Copy .env.example to .env and fill in the secrets first.
+# AttendOps: run the app on this computer. Use install.ps1 (Windows) or install.sh (macOS/Linux),
+# which create .env and start this stack. Both containers restart automatically (e.g. after a reboot,
+# once Docker is running).
+name: attendops
+
 services:
   db:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-attendops}
       POSTGRES_USER: ${POSTGRES_USER:-attendops}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5432:5432"   # host access for local tools only
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
-      retries: 10
+      retries: 20
+    networks: [internal]
 
-  backend:
-    build: ./backend
+  app:
+    build: .
+    image: attendops:local
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-attendops}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-attendops}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       DEVICE_CREDENTIALS_KEY: ${DEVICE_CREDENTIALS_KEY:?set DEVICE_CREDENTIALS_KEY in .env}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
+      ENVIRONMENT: production
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
       APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Beirut}
       ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-15}
       REFRESH_TOKEN_DAYS: ${REFRESH_TOKEN_DAYS:-7}
@@ -36,16 +43,20 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "127.0.0.1:8000:8000"
+      # 127.0.0.1 = only this computer. Set APP_BIND=0.0.0.0 in .env to let other computers on the LAN in.
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8080}:8000"
+    networks: [internal]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
 
-  frontend:
-    build: ./frontend
-    environment:
-      BACKEND_URL: http://backend:8000
-    depends_on:
-      - backend
-    ports:
-      - "5173:5173"
+networks:
+  internal:
+    # Pinned so Docker never picks 172.22.x / 172.23.x, which would hide the access-control devices
+    # (Docker's default pools are 172.17-172.31.x). Change DOCKER_SUBNET only if it clashes with your LAN.
+    ipam:
+      config:
+        - subnet: ${DOCKER_SUBNET:-10.254.254.0/24}
 
 volumes:
   pgdata:

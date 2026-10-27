@@ -2,6 +2,7 @@
 
     python -m app.cli create-admin --email you@example.com      # prompts for the password
     python -m app.cli generate-keys     # prints a fresh JWT_SECRET and DEVICE_CREDENTIALS_KEY
+    python -m app.cli admin-count       # number of active admin accounts
 """
 
 import argparse
@@ -37,15 +38,30 @@ def create_admin(email: str) -> int:
     return 0
 
 
+def admin_count() -> int:
+    """Prints the number of active admin accounts (used by the installers)."""
+    from app.db import get_sessionmaker
+    from app.models import AppUser, Role
+
+    with get_sessionmaker()() as db:
+        n = db.scalar(select(func.count()).select_from(AppUser)
+                      .where(AppUser.role == Role.admin, AppUser.is_active.is_(True)))
+    print(n or 0)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(prog="python -m app.cli")
     sub = ap.add_subparsers(dest="cmd", required=True)
     ca = sub.add_parser("create-admin")
     ca.add_argument("--email", required=True)
     sub.add_parser("generate-keys")
+    sub.add_parser("admin-count")
     args = ap.parse_args()
     if args.cmd == "create-admin":
         return create_admin(args.email)
+    if args.cmd == "admin-count":
+        return admin_count()
     print(f"JWT_SECRET={secrets.token_urlsafe(48)}")
     print(f"DEVICE_CREDENTIALS_KEY={Fernet.generate_key().decode()}")
     return 0

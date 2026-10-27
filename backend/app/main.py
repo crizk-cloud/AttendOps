@@ -1,7 +1,10 @@
 import logging
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.api import app_users, auth, devices, logs, sync
@@ -34,7 +37,28 @@ def create_app() -> FastAPI:
             db_ok = False
         return {"status": "ok" if db_ok else "degraded", "database": db_ok, "timezone": settings.app_timezone}
 
+    if settings.static_dir:
+        _mount_frontend(app, Path(settings.static_dir))
     return app
+
+
+def _mount_frontend(app: FastAPI, root: Path) -> None:
+    """Serve the built React app; unknown non-API paths return index.html (client-side routing)."""
+    index = root / "index.html"
+    if not index.is_file():
+        logging.getLogger(__name__).warning("STATIC_DIR %s has no index.html; frontend not served", root)
+        return
+    app.mount("/assets", StaticFiles(directory=root / "assets"), name="assets")
+    root_resolved = root.resolve()
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def spa(path: str) -> FileResponse:
+        if path.startswith("api/") or path == "api":
+            raise HTTPException(404, "Not found")
+        candidate = (root / path).resolve()
+        if path and candidate.is_file() and candidate.is_relative_to(root_resolved):
+            return FileResponse(candidate)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
 app = create_app()

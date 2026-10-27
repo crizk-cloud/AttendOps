@@ -22,26 +22,102 @@ The existing `dahua_attendance_logger.py` integration is separate and is not tou
 | 4 | Scheduled sync of all devices, sync history/diagnostics page | next |
 | 5–7 | Users/cards, analytics, live feed, audit, deployment | planned |
 
-## Run locally with Docker (recommended)
+## Install on your computer
+
+AttendOps runs on one computer (Windows, macOS or Linux) **that is on the same network as the devices**.
+Everything runs in Docker: a database container and one app container that serves both the website and the API.
+Both restart automatically whenever Docker is running.
+
+### Windows
+
+1. Install **Docker Desktop** from https://www.docker.com/products/docker-desktop/ (accept the WSL 2 option if
+   asked), start it, and wait until it shows *Engine running*. In *Settings → General*, tick
+   *Start Docker Desktop when you sign in* so AttendOps comes back after a reboot.
+2. Get this project folder: on GitHub open branch `claude/dahua-access-control-app-zkwoc8`, click
+   **Code → Download ZIP**, and extract it, e.g. to `C:\AttendOps`. (Or `git clone` it.)
+3. Double-click **`install.cmd`** in that folder. It will:
+   - create `.env` with new random secrets,
+   - build and start the app (the first run downloads images; allow several minutes),
+   - ask for the email and password of the first admin account,
+   - open http://127.0.0.1:8080 in your browser.
+
+### macOS / Linux
+
+Install Docker (Docker Desktop on macOS), get the folder as above, then in a terminal in that folder:
 
 ```bash
-cp .env.example .env
-# Fill in POSTGRES_PASSWORD, JWT_SECRET and DEVICE_CREDENTIALS_KEY. To generate the two secrets:
-echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')"
-echo "DEVICE_CREDENTIALS_KEY=$(openssl rand -base64 32 | tr '+/' '-_')"
-
-docker compose up -d --build
-# Create the first admin account (prompts for a password, min. 10 characters):
-docker compose exec backend python -m app.cli create-admin --email you@example.com
+./install.sh
 ```
 
-Open http://localhost:5173 and sign in. API docs (development only): http://localhost:8000/api/docs.
+### Options (both installers)
 
-The backend applies database migrations automatically on start.
-The containers must run on a machine on the device LAN, because the backend talks to the devices directly
-(Phase 2 onward).
+| Windows | macOS/Linux | Effect |
+|---|---|---|
+| `-Port 9000` | `--port 9000` | Use another port (default 8080) |
+| `-Lan` | `--lan` | Let other computers on the network open the app at `http://<this-computer's-IP>:8080` (Windows Firewall may ask) |
+| `-AdminEmail you@x.lb` | `--admin-email you@x.lb` | Skip the email prompt |
+| `-Reset` | `--reset` | **Delete all AttendOps data** and start over (asks you to type DELETE) |
 
-## Run without Docker
+On Windows pass options like this: `powershell -ExecutionPolicy Bypass -File .\install.ps1 -Lan`.
+`-Port`/`-Lan` only apply when `.env` is first created; later, edit `APP_PORT`/`APP_BIND` in `.env` and run the
+installer again.
+
+Running the installer again is safe. It keeps `.env` and all data, rebuilds with the current code, and restarts.
+That is also how you **update**: replace the folder's contents with the new version (keep `.env`), then run it.
+
+### Day-to-day (in the project folder)
+
+```
+docker compose stop            # stop AttendOps
+docker compose start           # start it again
+docker compose ps              # status
+docker compose logs -f app     # live log
+```
+
+### Back up
+
+`.env` holds `DEVICE_CREDENTIALS_KEY`. Without it the saved device passwords cannot be decrypted. Keep a copy of
+`.env` somewhere safe, together with database backups:
+
+```
+docker compose exec -T db pg_dump -U attendops -Fc -f /tmp/attendops.dump attendops
+docker compose cp db:/tmp/attendops.dump ./attendops-backup.dump
+```
+
+Restore into a running install (replaces current data):
+
+```
+docker compose cp ./attendops-backup.dump db:/tmp/attendops.dump
+docker compose exec -T db pg_restore -U attendops -d attendops --clean --if-exists /tmp/attendops.dump
+```
+
+If `.env` is lost but the data still exists, the installer refuses to create new secrets (they would not match the
+database). Put the backed-up `.env` back first.
+
+### Networking notes
+
+- The computer must reach every device subnet (e.g. `172.22.76.x` and `172.23.5.x`). Test it with
+  `ping 172.22.76.12` from that computer.
+- Docker normally gives its internal networks `172.17–172.31.x.x` addresses, which overlap the devices.
+  AttendOps pins its own network to `10.254.254.0/24` (`DOCKER_SUBNET` in `.env`) so the devices stay reachable.
+  If your LAN uses `10.254.254.x`, choose another range. Also avoid running other Docker projects whose
+  networks use `172.22.x` / `172.23.x`.
+- The app uses plain HTTP. Keep `APP_BIND=127.0.0.1` (the default) unless other computers need access. If you
+  later put it behind HTTPS, set `COOKIE_SECURE=true`.
+
+## Development setup
+
+For working on the code (hot-reloading frontend, database port exposed on `127.0.0.1:5432`):
+
+```bash
+cp .env.example .env    # fill in POSTGRES_PASSWORD, JWT_SECRET, DEVICE_CREDENTIALS_KEY
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml exec backend python -m app.cli create-admin --email you@example.com
+```
+
+Frontend: http://localhost:5173 · API docs: http://localhost:8000/api/docs
+
+### Without Docker
 
 You need Python 3.12, Node 22 and a PostgreSQL 16 database.
 
@@ -72,7 +148,12 @@ Read by the backend from the environment or `backend/.env`. Docker compose reads
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | docker | `attendops` / `attendops` / — | Database container settings |
 | `JWT_SECRET` | yes | — | Signs tokens; at least 32 chars. Changing it signs everyone out |
 | `DEVICE_CREDENTIALS_KEY` | yes | — | Fernet key encrypting device passwords at rest. **Back it up**: if lost, device passwords must be re-entered |
-| `ENVIRONMENT` | no | `development` | `production` turns on secure cookies and hides API docs |
+| `ENVIRONMENT` | no | `development` | `production` hides the API docs (the installed app uses `production`) |
+| `COOKIE_SECURE` | no | `false` | Send the login cookie over HTTPS only. Turn on only when serving over HTTPS |
+| `APP_PORT` | installer | `8080` | Port of the installed app |
+| `APP_BIND` | installer | `127.0.0.1` | `127.0.0.1` = this computer only; `0.0.0.0` = also other computers on the LAN |
+| `DOCKER_SUBNET` | installer | `10.254.254.0/24` | Docker network for the app; must not overlap the device subnets or your LAN |
+| `STATIC_DIR` | image | `/app/static` | Built frontend served by the backend (set inside the image) |
 | `APP_TIMEZONE` | no | `Asia/Beirut` | Display time zone (storage is always UTC) |
 | `ACCESS_TOKEN_MINUTES` | no | `15` | Access token lifetime |
 | `REFRESH_TOKEN_DAYS` | no | `7` | Refresh token lifetime |
