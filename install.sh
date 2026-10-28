@@ -100,7 +100,8 @@ fi
 
 say "AttendOps is running: $URL"
 if [ "$BIND" = "0.0.0.0" ]; then
-  echo "Other computers on the network can use http://<this-computer's-IP>:$PORT"
+  LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+  echo "Other computers on the network can use http://${LAN_IP:-<this-computer-IP>}:$PORT"
 fi
 cat <<MSG
 

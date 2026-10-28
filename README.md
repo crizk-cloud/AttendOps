@@ -41,6 +41,17 @@ Both restart automatically whenever Docker is running.
    - ask for the email and password of the first admin account,
    - open http://127.0.0.1:8080 in your browser.
 
+### VirtualBox VM (Ubuntu Server, bridged to the LAN)
+
+Step-by-step guide: [deploy/VIRTUALBOX.md](deploy/VIRTUALBOX.md). In short, inside the VM:
+
+```bash
+git clone -b claude/dahua-access-control-app-zkwoc8 https://github.com/crizk-cloud/AttendOps.git
+cd AttendOps && ./deploy/setup-ubuntu-vm.sh
+```
+
+It installs Docker Engine, then AttendOps with `--lan`, and prints the address to open from your computer.
+
 ### macOS / Linux
 
 Install Docker (Docker Desktop on macOS), get the folder as above, then in a terminal in that folder:
@@ -292,6 +303,7 @@ backend/app/
   services/         devices.py (checks), sync.py (history import); later pending changes, analytics
 backend/alembic/    migrations
 frontend/src/       api client, auth context, pages
+deploy/                 VirtualBox/Ubuntu VM guide and setup script
 tools/probe_device.py   read-only probe to run on the LAN against one device
 mock_device/            FAKE devices for local development only (never imported by the app)
 ```
